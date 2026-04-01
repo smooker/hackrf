@@ -82,6 +82,7 @@ void transceiver_shutdown(void);
 void start_streaming_on_hw_sync();
 void rx_mode(uint32_t seq);
 void tx_mode(uint32_t seq);
+void cw_mode(uint32_t seq);
 void off_mode(uint32_t seq);
 
 #endif /*__USB_API_TRANSCEIVER_H__*/

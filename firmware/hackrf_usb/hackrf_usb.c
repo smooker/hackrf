@@ -228,8 +228,12 @@ static void m0_rom_to_ram()
 
 int main(void)
 {
+#ifndef DFU_MODE
 	// Copy M0 image from ROM before SPIFI is disabled
+	// In DFU mode there is no ROM (SPI flash may be empty/corrupt),
+	// M0 image is already embedded in the RAM binary.
 	m0_rom_to_ram();
+#endif
 
 	detect_hardware_platform();
 	pin_setup();
@@ -320,6 +324,9 @@ int main(void)
 			break;
 		case TRANSCEIVER_MODE_RX_SWEEP:
 			sweep_mode(request.seq);
+			break;
+		case TRANSCEIVER_MODE_CW:
+			cw_mode(request.seq);
 			break;
 		case TRANSCEIVER_MODE_CPLD_UPDATE:
 			cpld_update();

@@ -481,6 +481,24 @@ void tx_mode(uint32_t seq)
 	transceiver_shutdown();
 }
 
+void cw_mode(uint32_t seq)
+{
+	transceiver_startup(TRANSCEIVER_MODE_CW);
+
+	/* Buffer is pre-filled by transceiver_startup, start streaming immediately */
+	baseband_streaming_enable(&sgpio_config);
+
+	while (transceiver_request.seq == seq) {
+		/* Keep m4_count ahead of m0_count so M0 never enters tx_zeros.
+		 * M0 wraps m0_count through USB_BULK_BUFFER_MASK (0x7FFF).
+		 * We keep m4_count at max so the condition
+		 * (m4_count - m0_count >= 32) is always true. */
+		m0_state.m4_count = m0_state.m0_count + USB_BULK_BUFFER_SIZE;
+	}
+
+	transceiver_shutdown();
+}
+
 void off_mode(uint32_t seq)
 {
 	hackrf_ui()->set_transceiver_mode(TRANSCEIVER_MODE_OFF);

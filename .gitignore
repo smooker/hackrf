@@ -73,3 +73,6 @@ firmware/cpld/**/*.xwbt
 firmware/**/build
 
 *.pyc
+official/
+tools/cw_tx
+firmware/*/build/
