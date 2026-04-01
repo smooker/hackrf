@@ -46,6 +46,7 @@ enum m0_mode {
 	M0_MODE_RX = 2,
 	M0_MODE_TX_START = 3,
 	M0_MODE_TX_RUN = 4,
+	M0_MODE_CW = 5,
 };
 
 enum m0_error {

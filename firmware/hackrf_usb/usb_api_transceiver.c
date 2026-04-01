@@ -339,14 +339,13 @@ void transceiver_startup(const transceiver_mode_t mode)
 		led_off(LED2);
 		led_on(LED3);
 		rf_path_set_direction(&rf_path, RF_PATH_DIRECTION_TX);
+		/* Fill buffer with CW IQ data (I=127, Q=0).
+		 * M0 CW mode reads from buffer start on every SGPIO cycle. */
 		for (uint32_t i = 0; i < USB_BULK_BUFFER_SIZE; i += 2) {
 			usb_bulk_buffer[i] = 127;
 			usb_bulk_buffer[i + 1] = 0;
 		}
-		m0_state.m0_count = 0;
-		m0_state.m4_count = 0xFFFFFFFF;
-		m0_state.shortfall_limit = 0;
-		m0_set_mode(M0_MODE_TX_RUN);
+		m0_set_mode(M0_MODE_CW);
 		break;
 	default:
 		break;
@@ -485,16 +484,11 @@ void cw_mode(uint32_t seq)
 {
 	transceiver_startup(TRANSCEIVER_MODE_CW);
 
-	/* Buffer is pre-filled by transceiver_startup, start streaming immediately */
+	/* M0 CW mode loops buffer data to SGPIO autonomously.
+	 * No margin check, no m4_count tracking needed. */
 	baseband_streaming_enable(&sgpio_config);
 
-	while (transceiver_request.seq == seq) {
-		/* Keep m4_count ahead of m0_count so M0 never enters tx_zeros.
-		 * M0 wraps m0_count through USB_BULK_BUFFER_MASK (0x7FFF).
-		 * We keep m4_count at max so the condition
-		 * (m4_count - m0_count >= 32) is always true. */
-		m0_state.m4_count = m0_state.m0_count + USB_BULK_BUFFER_SIZE;
-	}
+	while (transceiver_request.seq == seq) {}
 
 	transceiver_shutdown();
 }

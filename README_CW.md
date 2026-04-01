@@ -10,9 +10,11 @@ kato pachki vmesto neprекъsnat sinus. Za signal generator/chestotomer test �
 
 ## Reshenie
 
-Patch na firmware-a: zapylvame 32KB ring buffer s konstantni IQ danni (I=127, Q=0)
-i "izlygvame" M0 coprocesora che ima bezkraino mnogo data (`m4_count = 0xFFFFFFFF`).
-M0 loop-va bufera bezkraino prez `USB_BULK_BUFFER_MASK (0x7FFF)` bez da chaka USB.
+Nov M0 rezhim MODE_CW=5 v sgpio_m0.s:
+- M4 zapylva 32KB buffer s konstantni IQ danni (I=127, Q=0)
+- M0 chete ot nachalo na bufera na vseki SGPIO interrupt
+- NIAMA proverka na margin/m4_count — niama gaps
+- 108 cikyla ot 163 bydzhet — komfortno
 
 ## Arhitektura
 
@@ -23,18 +25,17 @@ LPC4320 (HackRF MCU)
 │       zapylva se s IQ danni ot USB (normalen rezhim)
 │       ili s konstantni stoinosti (CW mode)
 │
-├── M0 core — SGPIO TX loop (sgpio_m0.s)
-│   ├── Chete 32 bytes ot buffer na vseki SGPIO interrupt
-│   ├── Proverqva m4_count - m0_count >= 32
-│   ├── Ako da — pishe v SGPIO shadow registri
-│   ├── Ako ne — pishe nuli (tx_zeros = pachki!)
-│   └── Wrap prez & 0x7FFF — ring buffer
+├── M0 core — SGPIO loop (sgpio_m0.s)
+│   ├── MODE_RX (2):  SGPIO → buffer
+│   ├── MODE_TX (3,4): buffer → SGPIO (s margin check)
+│   ├── MODE_CW (5):  buffer start → SGPIO (bez margin check!)
+│   └── 32 bytes na vseki SGPIO interrupt, 163 cikyla bydzhet
 │
 ├── SGPIO → CPLD → MAX5864 DAC → antenna
 │
-└── CW Mode trick:
-    m4_count = 0xFFFFFFFF → M0 nikoga ne vliza v tx_zeros
-    Buffer zapylnen s 0x7F 0x00 → postoqnen carrier
+└── CW Mode:
+    M0 MODE_CW pishe konstanta 0x007F007F vyv vsichki 8 SGPIO slice-a
+    Niama m4_count tracking, niama shortfall, niama gaps
 ```
 
 ## Failove

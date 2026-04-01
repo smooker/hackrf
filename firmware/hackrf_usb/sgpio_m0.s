@@ -38,13 +38,14 @@ do is handle the SGPIO exchange interrupt, which indicates that new data can
 now be read from or written to the SGPIO shadow registers.
 
 To implement the different functions of HackRF, the M0 operates in one of
-five modes, configured by the M4:
+six modes, configured by the M4:
 
 IDLE:           Do nothing.
 WAIT:           Do nothing, but increment byte counter for timing purposes.
 RX:             Read data from SGPIO and write it to the buffer.
 TX_START:       Write zeroes to SGPIO until there is data in the buffer.
 TX_RUN:         Read data from the buffer and write it to SGPIO.
+CW:             Write constant IQ data to SGPIO (no buffer tracking).
 
 In all modes except IDLE, the M0 advances a byte counter, which increases by
 32 each time that many bytes are exchanged with the buffer (or skipped over,
@@ -98,12 +99,13 @@ These latencies are assumed to apply to all accesses to the SGPIO peripheral's
 address space, which includes its interrupt control registers as well as the
 shadow registers.
 
-There are four key code paths, with the following worst-case timings:
+There are five key code paths, with the following worst-case timings:
 
 RX, normal:     152 cycles
 RX, overrun:    76 cycles
 TX, normal:     140 cycles
 TX, underrun:   145 cycles
+CW:             108 cycles
 
 Design
 ======
@@ -234,6 +236,7 @@ The rest of this file is organised as follows:
 .equ MODE_RX,                              2
 .equ MODE_TX_START,                        3
 .equ MODE_TX_RUN,                          4
+.equ MODE_CW,                              5
 
 // Error codes.
 .equ ERROR_NONE,                           0
@@ -430,9 +433,10 @@ as follows:
 
 Routine:                Uses conditional branches to:
 
-idle                    tx_loop, wait_loop
+idle                    tx_loop, wait_loop, cw_loop
 tx_zeros                tx_loop
 checked_rollback        idle
+cw_loop                 idle
 tx_loop                 tx_zeros, checked_rollback, rx_loop, wait_loop
 wait_loop               rx_loop, tx_loop
 rx_loop                 rx_shortfall, checked_rollback, tx_loop, wait_loop
@@ -529,6 +533,10 @@ ack_request:
 	cmp mode, #MODE_WAIT                            // if mode < WAIT:                      // 1
 	blt idle                                        //      goto idle                       // 1 thru, 3 taken
 	beq wait_loop                                   // elif mode == WAIT: goto wait_loop    // 1 thru, 3 taken
+	cmp mode, #MODE_CW                              // if mode == CW:                       // 1
+	bne not_cw                                      //      (skip if not CW)                // 1 thru, 3 taken
+	b cw_loop                                       //      goto cw_loop                    // 3
+not_cw:
 	cmp mode, #MODE_RX                              // if mode > RX:                        // 1
 	bgt tx_loop                                     //      goto tx_loop                    // 1 thru, 3 taken
 	b rx_loop                                       // goto rx_loop                         // 3
@@ -693,6 +701,44 @@ rx_shortfall:
 
 	// Run common shortfall handling and jump back to RX loop.
 	handle_shortfall rx                             // handle_shortfall()                   // 24
+
+cw_loop:
+	// CW mode: write constant IQ data to SGPIO every cycle.
+	// No margin check, no buffer tracking — M0 reads from buffer start
+	// each time (data never changes: I=127, Q=0 repeating).
+	// Total: ~108 cycles, well within 163 cycle budget.
+
+	// Wait for and clear SGPIO interrupt.
+	await_sgpio cw                                  //                                      // 34
+
+	// Check if there is a mode change request. If so, return to idle.
+	// No shortfall stats to roll back in CW mode.
+	// Cannot use on_request macro here — idle is too far for conditional branch.
+	mode .req r3
+	flag .req r2
+	ldr mode, [state, #REQUESTED_MODE]              // mode = state.requested_mode          // 2
+	lsr flag, mode, #16                             // flag = mode >> 16                    // 1
+	beq cw_continue                                 // if flag == 0: no request, continue   // 1 thru, 3 taken
+	b idle                                          // else: goto idle                      // 3
+
+cw_continue:
+	// Load one word of CW IQ data from buffer start.
+	// Pattern: 7F 00 7F 00 = 0x007F007F (little endian).
+	// All SGPIO slices get the same value.
+	mov buf_ptr, buf_base                           // buf_ptr = buf_base                   // 1
+	ldr r0, [buf_ptr]                               // r0 = *(uint32_t*)buf_ptr             // 2
+
+	// Write to all 8 SGPIO slices.
+	str r0, [sgpio_data, #SLICE0]                   // SGPIO_REG_SS[SLICE0] = r0            // 8
+	str r0, [sgpio_data, #SLICE1]                   // SGPIO_REG_SS[SLICE1] = r0            // 8
+	str r0, [sgpio_data, #SLICE2]                   // SGPIO_REG_SS[SLICE2] = r0            // 8
+	str r0, [sgpio_data, #SLICE3]                   // SGPIO_REG_SS[SLICE3] = r0            // 8
+	str r0, [sgpio_data, #SLICE4]                   // SGPIO_REG_SS[SLICE4] = r0            // 8
+	str r0, [sgpio_data, #SLICE5]                   // SGPIO_REG_SS[SLICE5] = r0            // 8
+	str r0, [sgpio_data, #SLICE6]                   // SGPIO_REG_SS[SLICE6] = r0            // 8
+	str r0, [sgpio_data, #SLICE7]                   // SGPIO_REG_SS[SLICE7] = r0            // 8
+
+	b cw_loop                                       // loop                                 // 3
 
 // The linker will put a literal pool here, so add a label for clearer objdump output:
 constants:
