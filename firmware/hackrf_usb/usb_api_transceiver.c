@@ -335,6 +335,19 @@ void transceiver_startup(const transceiver_mode_t mode)
 		m0_set_mode(M0_MODE_TX_START);
 		m0_state.shortfall_limit = _tx_underrun_limit;
 		break;
+	case TRANSCEIVER_MODE_CW:
+		led_off(LED2);
+		led_on(LED3);
+		rf_path_set_direction(&rf_path, RF_PATH_DIRECTION_TX);
+		for (uint32_t i = 0; i < USB_BULK_BUFFER_SIZE; i += 2) {
+			usb_bulk_buffer[i] = 127;
+			usb_bulk_buffer[i + 1] = 0;
+		}
+		m0_state.m0_count = 0;
+		m0_state.m4_count = 0xFFFFFFFF;
+		m0_state.shortfall_limit = 0;
+		m0_set_mode(M0_MODE_TX_RUN);
+		break;
 	default:
 		break;
 	}
@@ -354,6 +367,7 @@ usb_request_status_t usb_vendor_request_set_transceiver_mode(
 		case TRANSCEIVER_MODE_TX:
 		case TRANSCEIVER_MODE_RX_SWEEP:
 		case TRANSCEIVER_MODE_CPLD_UPDATE:
+		case TRANSCEIVER_MODE_CW:
 			request_transceiver_mode(endpoint->setup.value);
 			usb_transfer_schedule_ack(endpoint->in);
 			return USB_REQUEST_STATUS_OK;

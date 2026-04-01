@@ -249,6 +249,7 @@ typedef enum {
 	TRANSCEIVER_MODE_SS = 3,
 	TRANSCEIVER_MODE_CPLD_UPDATE = 4,
 	TRANSCEIVER_MODE_RX_SWEEP = 5,
+	TRANSCEIVER_MODE_CW = 6,
 } transceiver_mode_t;
 
 typedef enum {
