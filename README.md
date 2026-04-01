@@ -22,7 +22,28 @@ M0 asembler (`sgpio_m0.s`) e **nedokosnat** — CW mode izpolzva syshtestvuvasht
 
 ## Build
 
+**VNIMANIE: Kompilirai SAMO s GCC ARM 9/10 (2019-2020)!**
+
+**TOVA E POVRATARASHT SE PROBLEM!** Veche dva pyti sme go dyrlili —
+pyrviq pyt predi godini, vtoriq pyt na 2026-04-01. I dva pyti sme
+zabravili. CHETI TOVA PREDI DA KOMPILIRASH.
+
+LPC4320 firmware-yt sydyrzha mnogo inline ASM (sgpio_m0.s, startup).
+Po-novi GCC ARM versii (11+) generiraat nevvaliden binary — DFU upload
+minava uspeshno, no firmware-yt NE boot-va. Izglezha kato USB/DFU
+problem, no realnata prichina e toolchain-a.
+
+Provereno: GCC ARM 9-2019/10-2020 — RABOTI.
+GCC ARM 11/12/13/14 — NE RABOTI (tihno schupva ASM-a).
+
+Backup toolchain: smooker ima tar.gz s raboteshti versii — pitai predi
+da emergevash nov cross-dev!
+
 ```bash
+# Proveri versiqta PYRVO:
+arm-none-eabi-gcc --version
+# Triabva: 10.x (2020)
+
 cd firmware/hackrf_usb
 mkdir -p build && cd build
 cmake .. -DCMAKE_OBJCOPY=/usr/bin/arm-none-eabi-objcopy -DCMAKE_POLICY_VERSION_MINIMUM=3.5
