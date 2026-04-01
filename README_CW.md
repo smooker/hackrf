@@ -99,10 +99,59 @@ Mayhem firmware e flashnat, no se planira custom app za:
 - CW signal generator s UI
 - Chestotomer test na HP 5328A
 
+## CLKIN — vhnshen clock vhod (10 MHz reference)
+
+HackRF One ima SMA konektor za vhnshen 10 MHz reference clock.
+
+Iziskvaniia za CLKIN signala:
+- Chestota: 10 MHz (firmware proverava 9-11 MHz diapazon)
+- Nivo: 3.3V CMOS ili LVCMOS (NE 50 ohm sinusoida!)
+- Si5351C CLKIN pin — otiva direktno kym PLL
+- Na r9: firmware meri s Timer2 za 50ms — validno ako 9 MHz < f < 11 MHz
+- Na pre-r9: Si5351C registyr 0 bit LOS (Loss of Signal)
+
+Avtomatichno prevklyuchvane:
+- Firmware detektira CLKIN pri startup i pri activate_best_clock_source()
+- Ako CLKIN e validen → PLL_SOURCE_CLKIN (vmesto XTAL)
+- PortaPack ikonata "EXT" v dolniq dqsen ygyl pokazva vhnshen clock
+
+Komandi:
+  hackrf_clock -i              # procheti CLKIN status
+  hackrf_clock -a              # procheti vsichki clock nastroiki
+
+Prilozhenie:
+- GPS disciplined 10 MHz (GPSDO) → CLKIN → tochnost < 0.01 ppm
+- OCXO 10 MHz reference
+- HP 5328A 10 MHz reference izhod
+
+## CLKOUT — clock izhod (10 MHz)
+
+Si5351C generira 10 MHz na CLKOUT SMA konektora.
+
+Komandi:
+  hackrf_clock -o 1            # vklyuchi CLKOUT (10 MHz)
+  hackrf_clock -o 0            # izklyuchi CLKOUT
+  hackrf_clock -r 3            # procheti CLKOUT nastroiki
+
+Tehnichesko:
+- Izhod: Si5351C CLK2 (pre-r9) ili CLK3 (r9)
+- Multisynth delitel: 800 MHz VCO / 80 = 10 MHz
+- Nivo: 3.3V CMOS
+- Na r9: dopylnitelen GPIO enable (H1R9_CLKOUT_EN)
+
+Prilozhenie:
+- Reference za drug SDR (daisy chain)
+- Kalibraciq na chestotomer
+- Sinhronizaciq na nyakolko HackRF-a
+
+VNIMANIE: CLKOUT e 3.3V CMOS! Ne vyrzvai direktno kym 50 ohm vhod —
+tryabva seriino syprotivlenie ili atenuator.
+
 ## Belezhki
 
 - HackRF range: 1 MHz — 6 GHz
-- TX power: ~10 dBm max (VGA=47 + AMP=ON)
+- TX power: ~10 dBm max (VGA=47 + AMP=ON), no AMP e invertiran na pre-r6!
 - DAC: MAX5864, 8-bit, do 20 Msps
 - USB bulk transfer: 16384 bytes = ~4ms pri 2 Msps
 - PortaPack model: H1/H2 (da se utochni)
+- AMP (MGA-81563): na pre-r6 board bypass dava PO-VISOKO nivo ot amplifier!
