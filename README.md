@@ -2,7 +2,8 @@
 
 Custom HackRF firmware s CW mode i PortaPack LCD status display.
 
-Fork na [greatscottgadgets/hackrf](https://github.com/greatscottgadgets/hackrf) (main branch, HEAD).
+Fork na [greatscottgadgets/hackrf](https://github.com/greatscottgadgets/hackrf), baziran na v2024.02.1 release.
+HackRF One ot 2014 (pre-r6 reviziq).
 
 ## Dokumentacia
 
@@ -14,7 +15,7 @@ Fork na [greatscottgadgets/hackrf](https://github.com/greatscottgadgets/hackrf) 
 
 ## Kakvo e promeneno
 
-- `firmware/common/radio.h` — dobaven `TRANSCEIVER_MODE_CW = 6`
+- `firmware/common/hackrf_core.h` — dobaven `TRANSCEIVER_MODE_CW = 6`
 - `firmware/hackrf_usb/usb_api_transceiver.c` — CW mode: zapylva ring buffer s I=127 Q=0, nastroyva m4_count trick za postoqnen carrier bez USB pachki
 
 M0 asembler (`sgpio_m0.s`) e **nedokosnat** — CW mode izpolzva syshtestvuvashtiq `TX_RUN` rezhim.
@@ -24,7 +25,7 @@ M0 asembler (`sgpio_m0.s`) e **nedokosnat** — CW mode izpolzva syshtestvuvasht
 ```bash
 cd firmware/hackrf_usb
 mkdir -p build && cd build
-cmake .. -DCMAKE_OBJCOPY=/usr/bin/arm-none-eabi-objcopy
+cmake .. -DCMAKE_OBJCOPY=/usr/bin/arm-none-eabi-objcopy -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 make -j4
 ```
 
