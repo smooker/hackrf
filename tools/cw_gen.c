@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 {
 	uint64_t freq = (argc > 1) ? strtoull(argv[1], NULL, 10) : 100000000ULL;
 	uint32_t txvga = (argc > 2) ? atoi(argv[2]) : 20;
-	int amp = (argc > 3) ? atoi(argv[3]) : 0;
+	int amp = (argc > 3) ? atoi(argv[3]) : 0;  /* default OFF — amp is inverted on pre-r6 boards */
 
 	if (txvga > 47) txvga = 47;
 	if (freq < FREQ_MIN) freq = FREQ_MIN;
@@ -176,17 +176,19 @@ int main(int argc, char *argv[])
 		vendor_req(HACKRF_BASEBAND_FILTER_SET, bw & 0xffff, bw >> 16, NULL, 0);
 	}
 
-	/* Set frequency, gain, amp */
+	/* Set frequency */
 	set_freq(freq);
-	set_txvga(txvga);
-	vendor_req(HACKRF_AMP_ENABLE, amp ? 1 : 0, 0, NULL, 0);
 
-	/* Activate CW mode */
+	/* Activate CW mode first — transceiver_startup() resets switchctrl */
 	r = vendor_req(HACKRF_SET_TRANSCEIVER_MODE, MODE_CW, 0, NULL, 0);
 	if (r < 0) {
 		fprintf(stderr, "set CW mode: %s\n", libusb_strerror(r));
 		goto cleanup;
 	}
+
+	/* Set gain and amp AFTER CW mode (startup resets switches) */
+	set_txvga(txvga);
+	vendor_req(HACKRF_AMP_ENABLE, amp ? 1 : 0, 0, NULL, 0);
 
 	printf("HackRF CW Generator — Interactive\n");
 	printf("  Up/Down: +/-10 MHz  Left/Right: +/-1 MHz  +/-: +/-100 kHz\n");

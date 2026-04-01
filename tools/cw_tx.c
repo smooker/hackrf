@@ -174,7 +174,14 @@ int main(int argc, char *argv[])
 	}
 	printf("  Freq set OK\n");
 
-	/* Set TX VGA gain (ENDPOINT_IN, value in index, reads 1 byte back) */
+	/* Activate CW mode first — transceiver_startup() resets switchctrl */
+	r = vendor_req(HACKRF_SET_TRANSCEIVER_MODE, MODE_CW, 0, NULL, 0);
+	if (r < 0) {
+		fprintf(stderr, "set CW mode: %s\n", libusb_strerror(r));
+		goto cleanup;
+	}
+
+	/* Set TX VGA gain AFTER CW mode (startup resets switches) */
 	{
 		uint8_t retval = 0;
 		r = libusb_control_transfer(dev,
@@ -187,16 +194,9 @@ int main(int argc, char *argv[])
 			printf("  TX VGA gain set: %u dB\n", txvga);
 	}
 
-	/* Set RF amp */
+	/* Set RF amp AFTER CW mode */
 	r = vendor_req(HACKRF_AMP_ENABLE, amp ? 1 : 0, 0, NULL, 0);
 	if (r < 0) fprintf(stderr, "amp_enable: %s\n", libusb_strerror(r));
-
-	/* Activate CW mode */
-	r = vendor_req(HACKRF_SET_TRANSCEIVER_MODE, MODE_CW, 0, NULL, 0);
-	if (r < 0) {
-		fprintf(stderr, "set CW mode: %s\n", libusb_strerror(r));
-		goto cleanup;
-	}
 
 	printf("  CW TX active! Press Ctrl+C to stop.\n");
 
